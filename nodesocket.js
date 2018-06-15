@@ -1,14 +1,22 @@
+var express = require('express');
+var app = express();
 var server = require('net').createServer()
 var users = {}
 var qtdSalas = 0;
 var qtdJog = 0;
+
+var verb = false
+
 process.argv.forEach(function (val, index, array) {
   console.log(index + ': ' + val);
+  if (index == 2) {
+  	verb = val;
+  };
 });
 
 var cfg = {
   port: 1902,
-  verbose: false // set to true to capture lots of debug info
+  verbose: verb // set to true to capture lots of debug info
 }
 var _log = function () {
   if (cfg.verbose) console.log.apply(console, arguments)
@@ -28,7 +36,6 @@ server.on('connection', function(user){
 		_log("RAW",dataRaw.toString().slice(0,pos+1));
 		var message = JSON.parse(dataRaw.toString().slice(0,pos+1));
 		if (message.action == 'MATCHMAKE') {
-			_log("MATCHMAKE");
 			user.room = "lobby";
 			users[user.room] = users[user.room] || {};
 			users[user.room][user.connectionId] = user;
@@ -47,16 +54,13 @@ server.on('connection', function(user){
 				users[user.room][lobbyUsers[0]].room = user.room;
 				users[user.room][lobbyUsers[1]].room = user.room;
 				users[user.room][lobbyUsers[0]].write('{"action":"gameinit","id":"' + lobbyUsers[0] + '","room":"' + user.room + '"}\n');
-				users[user.room][lobbyUsers[1]].write('{"action":"gameinit","id":"' + lobbyUsers[1] + '","room":"' + user.room + '"}\n');
-
-				_log("Criar Sala",users);				
+				users[user.room][lobbyUsers[1]].write('{"action":"gameinit","id":"' + lobbyUsers[1] + '","room":"' + user.room + '"}\n');			
 			};
 		};
 		if (message.action == 'PING') {
 			users[message.room][message.id].write(JSON.stringify(message) + "\n");
 		};
 		if (message.action == 'HIT') {
-			_log("HIT");
 			var hit = message.hit;
 			var gameUsers = Object.keys(users[message.room])
 			for (var i = 0; i < gameUsers.length; i++) {
@@ -65,11 +69,7 @@ server.on('connection', function(user){
 				}else{
 					users[message.room][gameUsers[i]].life = users[message.room][gameUsers[i]].life - hit;
 				}
-
 				message['life'] = users[message.room][gameUsers[i]].life;
-
-				_log("LIFES",message.id, message.life);
-
 				users[message.room][gameUsers[i]].write(JSON.stringify(message) + "\n");
 			};
 		};
@@ -102,7 +102,7 @@ server.on('listening', function() {
 	console.log("--------------------##..#..#...#..#...#..#....--------------------");
 	console.log("--------------------#.#.#..#...#..#...#..###..--------------------");
 	console.log("--------------------#..##..#...#..#...#..#....--------------------");
-	console.log("--------------------#...#...###...####...#####------0.0.1---------");
+	console.log("--------------------#...#...###...####...#####--------------------");
 	console.log("------------------------------------------------------------------");
 	console.log("------------------------------------------------------------------");
 })
@@ -130,6 +130,9 @@ function monitRooms() {
 	console.log("Qtd Salas:", salas.length, "Qtd Jogadores",qtdUsers);
 	qtdSalas = salas.length;
 	qtdJog = qtdUsers;
+	app.get('/', function (req, res) {
+		res.send('<meta http-equiv="refresh" content="5" ><body>Salas: ' + qtdSalas +  ' Jogadores: ' + qtdJog + '</body>');
+	});
 	console.log("------------------------------------------------------------------");
 	console.log("------------------------------------------------------------------");
 	setTimeout(monitRooms, 2000);
@@ -137,3 +140,9 @@ function monitRooms() {
 }
 
 setTimeout(monitRooms, 1000);
+
+
+app.listen(3000, function () {
+  console.log('Example app listening on port 3000!');
+});
+
