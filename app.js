@@ -1,116 +1,139 @@
-﻿/**
- * NoobHub node.js server
- * Opensource multiplayer and network messaging for CoronaSDK, Moai, Gideros & LÖVE
- *
- * @usage
- * $ nodejs node.js
- *
- * @authors
- * Igor Korsakov
- * Sergii Tsegelnyk
- *
- * @license WTFPL
- *
- * https://github.com/Overtorment/NoobHub
- *
- **/
-
 var server = require('net').createServer()
-var sockets = {}  // this is where we store all current client socket connections
+var users = {}
+var qtdSalas = 0;
+var qtdJog = 0;
+process.argv.forEach(function (val, index, array) {
+  console.log(index + ': ' + val);
+});
+
 var cfg = {
-  port: 1337,
-  buffer_size: 1024 * 16, // buffer allocated per each socket client
+  port: 1902,
   verbose: false // set to true to capture lots of debug info
 }
 var _log = function () {
   if (cfg.verbose) console.log.apply(console, arguments)
 }
 
-// black magic
-process.on('uncaughtException', function (err) {
-  _log('Exception: ' + err) // TODO: think we should terminate it on such exception
+server.on('connection', function(user){
+	user.setNoDelay(true);
+	//user.setKeepAlive(true, 300 * 1000)
+	user.isConnected = true;
+	user.connectionId = "id" + user.remoteAddress  + '-' + user.remotePort;
+	user.write('{"action":"connect","id":"'+user.connectionId+'"}\n')
+
+	_log("----------User " + user.connectionId + " connected-----------");
+
+	user.on('data', function (dataRaw){
+		var pos = dataRaw.toString().indexOf("}");
+		_log("RAW",dataRaw.toString().slice(0,pos+1));
+		var message = JSON.parse(dataRaw.toString().slice(0,pos+1));
+		if (message.action == 'MATCHMAKE') {
+			_log("MATCHMAKE");
+			user.room = "lobby";
+			users[user.room] = users[user.room] || {};
+			users[user.room][user.connectionId] = user;
+			var lobbyUsers = Object.keys(users[user.room])
+			if (lobbyUsers.length >= 2) {
+				user.room = "game" + lobbyUsers[0] + lobbyUsers[1];
+				users[user.room] = users[user.room] || {};
+				users[user.room][lobbyUsers[0]] = users["lobby"][lobbyUsers[0]];
+				users[user.room][lobbyUsers[1]] = users["lobby"][lobbyUsers[1]];
+
+				delete users["lobby"][lobbyUsers[0]];
+				delete users["lobby"][lobbyUsers[1]];
+
+				users[user.room][lobbyUsers[0]].life = 50;
+				users[user.room][lobbyUsers[1]].life = 50;
+				users[user.room][lobbyUsers[0]].room = user.room;
+				users[user.room][lobbyUsers[1]].room = user.room;
+				users[user.room][lobbyUsers[0]].write('{"action":"gameinit","id":"' + lobbyUsers[0] + '","room":"' + user.room + '"}\n');
+				users[user.room][lobbyUsers[1]].write('{"action":"gameinit","id":"' + lobbyUsers[1] + '","room":"' + user.room + '"}\n');
+
+				_log("Criar Sala",users);				
+			};
+		};
+		if (message.action == 'PING') {
+			users[message.room][message.id].write(JSON.stringify(message) + "\n");
+		};
+		if (message.action == 'HIT') {
+			_log("HIT");
+			var hit = message.hit;
+			var gameUsers = Object.keys(users[message.room])
+			for (var i = 0; i < gameUsers.length; i++) {
+				if (user.connectionId == gameUsers[i]) {
+					users[message.room][gameUsers[i]].life = users[message.room][gameUsers[i]].life + hit;
+				}else{
+					users[message.room][gameUsers[i]].life = users[message.room][gameUsers[i]].life - hit;
+				}
+
+				message['life'] = users[message.room][gameUsers[i]].life;
+
+				_log("LIFES",message.id, message.life);
+
+				users[message.room][gameUsers[i]].write(JSON.stringify(message) + "\n");
+			};
+		};
+	})//end of user.on('data')
+	user.on('error', function () { return _destroySocket(user) })
+	user.on('close', function () { return _destroySocket(user) })
 })
 
-server.on('connection', function (socket) {
-  socket.setNoDelay(true)
-  socket.setKeepAlive(true, 300 * 1000)
-  socket.isConnected = true
-  socket.connectionId = socket.remoteAddress + '-' + socket.remotePort // unique, used to trim out from sockets hashmap when closing socket
-  socket.buffer = new Buffer(cfg.buffer_size)
-  socket.buffer.len = 0 // due to Buffer's nature we have to keep track of buffer contents ourself
+var _destroySocket = function (user) {
+  if (!user.room || !users[user.room] || !users[user.room][user.connectionId]) return
+  users[user.room][user.connectionId].isConnected = false
+  users[user.room][user.connectionId].destroy()
+  delete users[user.room][user.connectionId]
+  console.log(user.connectionId + ' has been disconnected from channel ' + user.room)
 
-  _log('New client: ' + socket.remoteAddress + ':' + socket.remotePort)
-
-  socket.on('data', function (dataRaw) { // dataRaw is an instance of Buffer as well
-    if (dataRaw.length > (cfg.buffer_size - socket.buffer.len)) {
-      _log("Message doesn't fit the buffer. Adjust the buffer size in configuration")
-      socket.buffer.len = 0 // trimming buffer
-      return false
-    }
-
-    socket.buffer.len += dataRaw.copy(socket.buffer, socket.buffer.len) // keeping track of how much data we have in buffer
-
-    var start
-    var end
-    var str = socket.buffer.slice(0, socket.buffer.len).toString()
-
-    if ((start = str.indexOf('__SUBSCRIBE__')) !== -1 && (end = str.indexOf('__ENDSUBSCRIBE__')) !== -1) {
-      // if socket was on another channel delete the old reference
-      if (socket.channel && sockets[socket.channel] && sockets[socket.channel][socket.connectionId]) {
-        delete sockets[socket.channel][socket.connectionId]
-      }
-      socket.channel = str.substr(start + 13, end - (start + 13))
-      socket.write('Hello. Noobhub online. \r\n')
-      _log('Client subscribes for channel: ' + socket.channel)
-      str = str.substr(end + 16)  // cut the message and remove the precedant part of the buffer since it can't be processed
-      socket.buffer.len = socket.buffer.write(str, 0)
-      sockets[socket.channel] = sockets[socket.channel] || {} // hashmap of sockets  subscribed to the same channel
-      sockets[socket.channel][ socket.connectionId ] = socket
-    }
-
-    var timeToExit = true
-    do {  // this is for a case when several messages arrived in buffer
-      if ((start = str.indexOf('__JSON__START__')) !== -1 && (end = str.indexOf('__JSON__END__')) !== -1) {
-        var json = str.substr(start + 15, end - (start + 15))
-        //_log('Client posts json:  ' + json)
-        str = str.substr(end + 13)  // cut the message and remove the precedant part of the buffer since it can't be processed
-        socket.buffer.len = socket.buffer.write(str, 0)
-        var subscribers = Object.keys(sockets[socket.channel])
-        var jsonObj = JSON.parse(json);
-        var milliseconds = (new Date).getTime();
-        jsonObj['numplayers'] = subscribers.length;
-        jsonObj['channel'] = socket.channel;
-        jsonObj['noobid'] = socket.connectionId;
-        jsonObj['lastUpdate'] = milliseconds;
-        json = JSON.stringify(jsonObj);
-        _log('KozzX Number of subscribers on ' + socket.channel + ': ' + jsonObj['id'] + subscribers.length + ' ' + json)
-        for (var i = 0, l = subscribers.length; i < l; i++) {
-          sockets[socket.channel][ subscribers[i] ].isConnected && sockets[socket.channel][ subscribers[i] ].write('__JSON__START__' + json + '__JSON__END__')
-        } // writing this message to all sockets with the same channel
-        timeToExit = false
-      } else { timeToExit = true } // if no json data found in buffer - then it is time to exit this loop
-    } while (!timeToExit)
-  }) // end of  socket.on 'data'R
-
-  socket.on('error', function () { return _destroySocket(socket) })
-  socket.on('close', function () { return _destroySocket(socket) })
-}) //  end of server.on 'connection'
-
-var _destroySocket = function (socket) {
-  if (!socket.channel || !sockets[socket.channel] || !sockets[socket.channel][socket.connectionId]) return
-  sockets[socket.channel][socket.connectionId].isConnected = false
-  sockets[socket.channel][socket.connectionId].destroy()
-  sockets[socket.channel][socket.connectionId].buffer = null
-  delete sockets[socket.channel][socket.connectionId].buffer
-  delete sockets[socket.channel][socket.connectionId]
-  _log(socket.connectionId + ' has been disconnected from channel ' + socket.channel)
-
-  if (Object.keys(sockets[socket.channel]).length === 0) {
-    delete sockets[socket.channel]
-    _log('empty channel wasted')
+  if (Object.keys(users[user.room]).length === 0) {
+    delete users[user.room]
+    console.log('empty channel wasted ' + user.room)
   }
 }
 
-server.on('listening', function () { console.log('NoobHub on ' + server.address().address + ':' + server.address().port) })
-server.listen(cfg.port, '::')
+server.on('listening', function() {
+	console.log("------------------------------------------------------------------");
+	console.log("------------------------------------------------------------------");
+	console.log("-------------------Socket Multiplayer Server ON-------------------");
+	console.log("-------------------Port: " + server.address().port + "-------------------------------------");
+	console.log("------------------------------------------------------------------");
+	console.log("------------------------------------------------------------------");
+	console.log("--------------------#...#...###...####...#####--------------------");
+	console.log("--------------------##..#..#...#..#...#..#....--------------------");
+	console.log("--------------------#.#.#..#...#..#...#..###..--------------------");
+	console.log("--------------------#..##..#...#..#...#..#....--------------------");
+	console.log("--------------------#...#...###...####...#####--------------------");
+	console.log("------------------------------------------------------------------");
+	console.log("------------------------------------------------------------------");
+})
+server.listen(1902, '::')
 
+
+function monitRooms() {
+	console.log("------------------------------------------------------------------");
+	console.log("-----------------------Lista de users-----------------------------");
+	console.log("----" + new Date().toString() + "----");
+	console.log("------------------------------------------------------------------");
+
+	var salas = (Object.keys(users));
+	var qtdUsers = 0
+	
+	for (var i = 0; i < salas.length; i++) {
+		console.log("Sala:",salas[i]);
+		var usuarios = Object.keys(users[salas[i]]);
+		for (var j = 0; j < usuarios.length; j++) {
+			console.log("|_ Usuário:",usuarios[j],users[salas[i]][usuarios[j]].life);
+			qtdUsers = qtdUsers + 1;
+		};
+		console.log("----------------------------");
+	};
+	console.log("Qtd Salas:", salas.length, "Qtd Jogadores",qtdUsers);
+	qtdSalas = salas.length;
+	qtdJog = qtdUsers;
+	console.log("------------------------------------------------------------------");
+	console.log("------------------------------------------------------------------");
+	setTimeout(monitRooms, 2000);
+	
+}
+
+setTimeout(monitRooms, 1000);
