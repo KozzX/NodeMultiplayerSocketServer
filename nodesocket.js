@@ -1,5 +1,7 @@
-var express = require('express');
-var app = express();
+var app = require('express')();
+var http = require('http').Server(app);
+var io = require('socket.io')(http);
+
 var server = require('net').createServer()
 var users = {}
 var qtdSalas = 0;
@@ -12,6 +14,10 @@ process.argv.forEach(function (val, index, array) {
   if (index == 2) {
   	verb = val;
   };
+});
+
+app.get('/', function(req, res){
+  res.sendFile(__dirname + '/index.html');
 });
 
 var cfg = {
@@ -130,9 +136,19 @@ function monitRooms() {
 	console.log("Qtd Salas:", salas.length, "Qtd Jogadores",qtdUsers);
 	qtdSalas = salas.length;
 	qtdJog = qtdUsers;
-	app.get('/', function (req, res) {
-		res.send('<meta http-equiv="refresh" content="5" ><body>Salas: ' + qtdSalas +  ' Jogadores: ' + qtdJog + '</body>');
-	});
+
+	
+	io.emit('qtd', "Qtd. Salas: " + qtdSalas + " Qtd. Jogadores: " + qtdJog);
+	
+	
+	
+	/*app.get('/', function (req, res) {
+		//res.send('<meta http-equiv="refresh" content="5" ><body>Salas: ' + qtdSalas +  ' Jogadores: ' + qtdJog + '</body>');
+		//res.sendFile('/corona projects/nodesocket/status.html');
+		console.log("RENDER");
+		res.render('index',{qtdSalas: qtdSalas, qtdJog: qtdJog});
+		
+	});*/
 	console.log("------------------------------------------------------------------");
 	console.log("------------------------------------------------------------------");
 	setTimeout(monitRooms, 2000);
@@ -141,8 +157,15 @@ function monitRooms() {
 
 setTimeout(monitRooms, 1000);
 
+/*io.on('connection', function(socket){
+	console.log("a user");
+  	socket.on('chat message', function(msg){
+  		console.log(msg);
+    	io.emit('chat message', msg);
+  	});
+});*/
 
-app.listen(3000, function () {
-  console.log('Example app listening on port 3000!');
+
+http.listen(3000, function(){
+  console.log('listening on *:3000');
 });
-
