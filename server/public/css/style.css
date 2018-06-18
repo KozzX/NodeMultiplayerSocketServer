@@ -1,1 +1,36 @@
+/* Custom Stylesheet */
+/**
+ * Use this file to override Materialize files so you can update
+ * the core Materialize files in the future
+ *
+ * Made By MaterializeCSS.com
+ */
 
+#menu{
+	padding-left: 300px;
+
+}
+@media only screen and (max-width : 992px) {
+    header, body, footer,#menu {
+    	padding-left: 0;
+    }
+}
+
+.side-nav{
+	background: linear-gradient(#48ab2d, #014109);
+}
+.side-nav a{
+	margin: 10px 10px 10px 10px;
+	border: 1px solid white;
+    border-radius: 10px;
+}
+
+.side-nav a.active{
+	background: #014109;
+	opacity: 0.8;
+}
+
+.side-nav a.active:hover{
+	background: #014109;
+	opacity: 0.8;
+}
