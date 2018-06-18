@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1.0"/>
+        <title>NMSS - Node Multiplayer Socket Server</title>
+
+        <!-- CSS  -->
+        <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+        <link rel="stylesheet" href="css/materialize.css" type="text/css" media="screen,projection"/>
+        <link rel="stylesheet" href="css/style.css" type="text/css" media="screen,projection"/>
+
+    </head>
+	<body>
+        <div class="container">
+            <div id="linha" class="row">
+            </div>
+        </div>
+        
+
+
+        <script src="/socket.io/socket.io.js"></script>
+        <script src="js/jquery-3.3.1.min.js"></script>
+        <script src="js/materialize.js"></script>
+        <script>
+            $(function () {
+                var socket = io();
+
+                socket.on('salas', function(msg){
+                    var info = JSON.parse(msg);
+                    var salas = Object.keys(info);
+                    $("#linha").empty();
+                    
+                    
+                    for (var i = 0; i < salas.length; i++) {
+                        var idKey = Object.keys(info[salas[i]]);
+                        var tableStr = "";    
+                        tableStr = tableStr + '<div class="col s12 m8 l4">';
+                        tableStr = tableStr + '<div class="card-panel cyan lighten-5">';
+                        tableStr = tableStr + "<h5>Sala: " + salas[i] + "</h5>";
+                        tableStr = tableStr + '<table width="100">';
+                        tableStr = tableStr + "<thead><tr><th>Id</th><th>Life</th><th>Ping</th></tr></thead>";
+                        tableStr = tableStr + "<tbody>";
+                        
+                        for (var j = 0; j < idKey.length; j++) {
+                            var nome = info[salas[i]][idKey[j]].idUser;
+                            var life = info[salas[i]][idKey[j]].life;
+                            var ping = info[salas[i]][idKey[j]].ping.toFixed(0);
+                            tableStr = tableStr + "<tr><td>" + nome + "</td><td>" + life + "</td><td>" + ping + "</td></tr>";
+                        };  
+                        tableStr = tableStr + "</tbody>";          
+                        tableStr = tableStr + "</table>";
+
+                        tableStr = tableStr + '</div>';
+                        tableStr = tableStr + '</div>';
+
+                        
+                        
+                        $("#linha").append(tableStr);
+
+                        
+                    };
+                });
+            });
+        </script>
+	</body>
+
+</html>
