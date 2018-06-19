@@ -197,7 +197,7 @@ function insertLog(log) {
 
         console.log('connected as id ' + connection.threadId);
         
-        connection.query("INSERT INTO (DESLOG) VALUES('" + log + "') ",function(err,rows){
+        connection.query("INSERT INTO LOGS (DESLOG) VALUES('" + log + "') ",function(err,rows){
             connection.release();
             if(!err) {
                 console.log(rows);
