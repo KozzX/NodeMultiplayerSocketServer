@@ -34,3 +34,10 @@
 	background: #014109;
 	opacity: 0.8;
 }
+#messages
+{
+	height : 50%;
+	width : 300px;
+	overflow-x : auto; /* hidden */
+	overflow-y : auto;
+}
