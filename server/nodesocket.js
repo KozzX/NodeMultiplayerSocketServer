@@ -3,6 +3,7 @@ var express = require('express');
 var http = require('http').Server(app);
 var io = require('socket.io')(http);
 var crypto = require('crypto');
+var mysql = require('mysql');
 
 var server = require('net').createServer()
 var users = {}
