@@ -11,6 +11,15 @@ var qtdJog = 0;
 
 var verb = false
 
+var pool      =    mysql.createPool({
+    connectionLimit : 1000, //important
+    host     : 'localhost',
+    user     : 'root',
+    password : 'tevez1311',
+    database : 'nmss',
+    debug    :  false
+});
+
 process.argv.forEach(function (val, index, array) {
   console.log(index + ': ' + val);
   if (index == 2) {
@@ -56,6 +65,7 @@ server.on('connection', function(user){
 			if (lobbyUsers.length >= 2) {
 				user.room = crypto.createHash('md5').update("game" + lobbyUsers[0] + lobbyUsers[1]).digest("hex").slice(0,8).toUpperCase();
 				users[user.room] = users[user.room] || {};
+				
 				users[user.room][lobbyUsers[0]] = users["lobby"][lobbyUsers[0]];
 				users[user.room][lobbyUsers[1]] = users["lobby"][lobbyUsers[1]];
 
@@ -104,7 +114,7 @@ var _destroySocket = function (user) {
   delete users[user.room][user.connectionId]
   console.log(user.connectionId + ' has been disconnected from room ' + user.room)
   io.emit('console', user.connectionId + ' has been disconnected from room ' + user.room)
-
+  
   if (Object.keys(users[user.room]).length === 0) {
     delete users[user.room]
     console.log('empty room wasted ' + user.room)
@@ -170,6 +180,30 @@ function monitRooms() {
 }
 
 setTimeout(monitRooms, 2000);
+
+function insertLog(log) {
+    
+    pool.getConnection(function(err,connection){
+        if (err) {
+          console.log("ERRO DB");
+          return;
+        }   
+
+        console.log('connected as id ' + connection.threadId);
+        
+        connection.query("INSERT INTO (DESLOG) VALUES('" + log + "') ",function(err,rows){
+            connection.release();
+            if(!err) {
+                console.log(rows);
+            }           
+        });
+
+        connection.on('error', function(err) {      
+              console.log("ERRO DB");
+              return;     
+        });
+  });
+}
 
 
 http.listen(3000, function(){
