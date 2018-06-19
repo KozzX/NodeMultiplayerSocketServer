@@ -2,6 +2,7 @@ var app = require('express')();
 var express = require('express');
 var http = require('http').Server(app);
 var io = require('socket.io')(http);
+var crypto = require('crypto');
 
 var server = require('net').createServer()
 var users = {}
@@ -35,10 +36,11 @@ server.on('connection', function(user){
 	user.setNoDelay(true);
 	//user.setKeepAlive(true, 300 * 1000)
 	user.isConnected = true;
-	user.connectionId = "id" + user.remoteAddress  + '-' + user.remotePort;
+	user.connectionId = crypto.createHash('md5').update("id" + user.remoteAddress  + '-' + user.remotePort).digest("hex").slice(0,8).toUpperCase();
 	user.write('{"action":"connect","id":"'+user.connectionId+'"}\n')
 
 	_log("----------User " + user.connectionId + " connected-----------");
+	io.emit('console',"----------User " + user.connectionId + " connected-----------");
 
 	user.on('data', function (dataRaw){
 		var pos = dataRaw.toString().indexOf("}");
@@ -52,7 +54,7 @@ server.on('connection', function(user){
 			users[user.room][user.connectionId] = user;
 			var lobbyUsers = Object.keys(users[user.room])
 			if (lobbyUsers.length >= 2) {
-				user.room = "game" + lobbyUsers[0] + lobbyUsers[1];
+				user.room = crypto.createHash('md5').update("game" + lobbyUsers[0] + lobbyUsers[1]).digest("hex").slice(0,8).toUpperCase();
 				users[user.room] = users[user.room] || {};
 				users[user.room][lobbyUsers[0]] = users["lobby"][lobbyUsers[0]];
 				users[user.room][lobbyUsers[1]] = users["lobby"][lobbyUsers[1]];
@@ -66,6 +68,8 @@ server.on('connection', function(user){
 				users[user.room][lobbyUsers[1]].room = user.room;
 				users[user.room][lobbyUsers[0]].write('{"action":"gameinit","id":"' + lobbyUsers[0] + '","room":"' + user.room + '"}\n');
 				users[user.room][lobbyUsers[1]].write('{"action":"gameinit","id":"' + lobbyUsers[1] + '","room":"' + user.room + '"}\n');			
+				io.emit('console', lobbyUsers[0] + ' connected to room ' + user.room);
+				io.emit('console', lobbyUsers[1] + ' connected to room ' + user.room);
 			};
 		};
 		if (message.action == 'PING') {
@@ -98,35 +102,28 @@ var _destroySocket = function (user) {
   users[user.room][user.connectionId].isConnected = false
   users[user.room][user.connectionId].destroy()
   delete users[user.room][user.connectionId]
-  console.log(user.connectionId + ' has been disconnected from channel ' + user.room)
+  console.log(user.connectionId + ' has been disconnected from room ' + user.room)
+  io.emit('console', user.connectionId + ' has been disconnected from room ' + user.room)
 
   if (Object.keys(users[user.room]).length === 0) {
     delete users[user.room]
-    console.log('empty channel wasted ' + user.room)
+    console.log('empty room wasted ' + user.room)
+    io.emit('console','empty room wasted ' + user.room)
   }
 }
 
 server.on('listening', function() {
 	console.log("------------------------------------------------------------------");
 	console.log("------------------------------------------------------------------");
-	console.log("-----------------Node Multiplayer Socket Server ON-----------------");
+	console.log("-----------------Node Multiplayer Socket Server ON----------------");
 	console.log("-------------------Port: " + server.address().port + "-------------------------------------");
 	console.log("------------------------------------------------------------------");
 	console.log("------------------------------------------------------------------");
-	console.log("--------------------#...#...###...####...#####--------------------");
-	console.log("--------------------##..#..#...#..#...#..#....--------------------");
-	console.log("--------------------#.#.#..#...#..#...#..###..--------------------");
-	console.log("--------------------#..##..#...#..#...#..#....--------------------");
-	console.log("--------------------#...#...###...####...#####--------------------");
-	console.log("------------------------------------------------------------------");
-	console.log("------------------------------------------------------------------");
-	console.log("------------------------------------------------------------------");
-	console.log("------------------------------------------------------------------");
-	console.log("--------------------#...#..#...#...####..#####--------------------");
+	console.log("--------------------#...#..#...#...####...####--------------------");
 	console.log("--------------------##..#..##.##..#......#....--------------------");
-	console.log("--------------------#.#.#..#.#.#...###...###..--------------------");
-	console.log("--------------------#..##..#...#......#..#....--------------------");
-	console.log("--------------------#...#..#...#..####...#####--------------------");
+	console.log("--------------------#.#.#..#.#.#...###....###.--------------------");
+	console.log("--------------------#..##..#...#......#......#--------------------");
+	console.log("--------------------#...#..#...#..####...####.--------------------");
 	console.log("------------------------------------------------------------------");
 	console.log("------------------------------------------------------------------");
 })
@@ -164,37 +161,15 @@ function monitRooms() {
 	qtdSalas = salas.length;
 	qtdJog = qtdUsers;
 
-
-	
-	//io.emit('qtd', "Qtd. Salas: " + qtdSalas + " Qtd. Jogadores: " + qtdJog);
-
 	io.emit('salas', JSON.stringify(info));
-	//io.emit('usuarios', usuarios);
-	
-	
-	
-	/*app.get('/', function (req, res) {
-		//res.send('<meta http-equiv="refresh" content="5" ><body>Salas: ' + qtdSalas +  ' Jogadores: ' + qtdJog + '</body>');
-		//res.sendFile('/corona projects/nodesocket/status.html');
-		console.log("RENDER");
-		res.render('index',{qtdSalas: qtdSalas, qtdJog: qtdJog});
-		
-	});*/
+
 	console.log("------------------------------------------------------------------");
 	console.log("------------------------------------------------------------------");
-	setTimeout(monitRooms, 2000);
+	setTimeout(monitRooms, 5000);
 	
 }
 
-setTimeout(monitRooms, 1000);
-
-/*io.on('connection', function(socket){
-	console.log("a user");
-  	socket.on('chat message', function(msg){
-  		console.log(msg);
-    	io.emit('chat message', msg);
-  	});
-});*/
+setTimeout(monitRooms, 2000);
 
 
 http.listen(3000, function(){
