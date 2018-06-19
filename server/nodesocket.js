@@ -82,6 +82,8 @@ server.on('connection', function(user){
 				users[user.room][lobbyUsers[1]].write('{"action":"gameinit","id":"' + lobbyUsers[1] + '","room":"' + user.room + '"}\n');			
 				io.emit('console', lobbyUsers[0] + ' connected to room ' + user.room);
 				io.emit('console', lobbyUsers[1] + ' connected to room ' + user.room);
+				insertLog(lobbyUsers[0] + ' connected to room ' + user.room);
+				insertLog(lobbyUsers[1] + ' connected to room ' + user.room);
 			};
 		};
 		if (message.action == 'PING') {
@@ -116,11 +118,13 @@ var _destroySocket = function (user) {
   delete users[user.room][user.connectionId]
   console.log(user.connectionId + ' has been disconnected from room ' + user.room)
   io.emit('console', user.connectionId + ' has been disconnected from room ' + user.room)
+  insertLog(user.connectionId + ' has been disconnected from room ' + user.room);
   
   if (Object.keys(users[user.room]).length === 0) {
     delete users[user.room]
     console.log('empty room wasted ' + user.room)
     io.emit('console','empty room wasted ' + user.room)
+    insertLog('empty room wasted ' + user.room);
   }
 }
 
