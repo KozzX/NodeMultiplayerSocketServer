@@ -49,9 +49,9 @@ server.on('connection', function(user){
 	user.connectionId = crypto.createHash('md5').update("id" + user.remoteAddress  + '-' + user.remotePort).digest("hex").slice(0,8).toUpperCase();
 	user.write('{"action":"connect","id":"'+user.connectionId+'"}\n')
 
-	_log("User " + user.connectionId + " connected");
-	io.emit('console',"User " + user.connectionId + " connected");
-	insertLog("User " + user.connectionId + " connected");
+	_log("Usuário " + user.connectionId + " conectou ao servidor.");
+	io.emit('console',"Usuário " + user.connectionId + " conectou ao servidor.");
+	insertLog("Usuário " + user.connectionId + " conectou ao servidor.");
 
 	user.on('data', function (dataRaw){
 		var pos = dataRaw.toString().indexOf("}");
@@ -82,8 +82,8 @@ server.on('connection', function(user){
 				users[user.room][lobbyUsers[1]].write('{"action":"gameinit","id":"' + lobbyUsers[1] + '","room":"' + user.room + '"}\n');			
 				io.emit('console', lobbyUsers[0] + ' connected to room ' + user.room);
 				io.emit('console', lobbyUsers[1] + ' connected to room ' + user.room);
-				insertLog(lobbyUsers[0] + ' connected to room ' + user.room);
-				insertLog(lobbyUsers[1] + ' connected to room ' + user.room);
+				insertLog('Usuário ' + lobbyUsers[0] + ' entrou na sala ' + user.room);
+				insertLog('Usuário ' + lobbyUsers[1] + ' entrou na sala ' + user.room);
 			};
 		};
 		if (message.action == 'PING') {
@@ -116,15 +116,15 @@ var _destroySocket = function (user) {
   users[user.room][user.connectionId].isConnected = false
   users[user.room][user.connectionId].destroy()
   delete users[user.room][user.connectionId]
-  console.log(user.connectionId + ' has been disconnected from room ' + user.room)
-  io.emit('console', user.connectionId + ' has been disconnected from room ' + user.room)
-  insertLog(user.connectionId + ' has been disconnected from room ' + user.room);
+  console.log('Usuário ' + user.connectionId + ' disconectou da sala ' + user.room)
+  io.emit('console', 'Usuário ' + user.connectionId + ' disconectou da sala ' + user.room)
+  insertLog('Usuário ' + user.connectionId + ' disconectou da sala ' + user.room);
   
   if (Object.keys(users[user.room]).length === 0) {
     delete users[user.room]
-    console.log('empty room wasted ' + user.room)
-    io.emit('console','empty room wasted ' + user.room)
-    insertLog('empty room wasted ' + user.room);
+    console.log('Sala vazia ' + user.room + ' foi removida')
+    io.emit('console','Sala vazia ' + user.room + ' foi removida')
+    insertLog('Sala vazia ' + user.room + ' foi removida');
   }
 }
 
