@@ -14,8 +14,8 @@
 	<body>
         <!--<div class="container">-->
             <div class="row">
-                <div id="linha" class="col s12 m8 l8"></div>
-                <div id="messages" class="col s12 m4 l4">
+                <div id="linha" class="col s12 m9 l9"></div>
+                <div id="messages" class="col s12 m3 l3">
                     <ul id="message"></ul>
                 </div>
             </div>
@@ -39,7 +39,7 @@
                     for (var i = 0; i < salas.length; i++) {
                         var idKey = Object.keys(info[salas[i]]);
                         var tableStr = "";    
-                        tableStr = tableStr + '<div class="col s18 m8 l4">';
+                        tableStr = tableStr + '<div class="col s12 m3 l3">';
                         tableStr = tableStr + '<div class="card-panel cyan lighten-5">';
                         tableStr = tableStr + "<h5>Sala: " + salas[i] + "</h5>";
                         tableStr = tableStr + '<table width="100">';
@@ -67,7 +67,7 @@
                 });
                 socket.on('console', function(msg){
                     console.log(msg);
-                    $('#message').prepend($('<li>').text(msg));
+                    $('#message').prepend($('<div class="speech-bubble">').text(msg));
                     var objDiv = document.getElementById("messages");
                     objDiv.scrollTop = objDiv.scrollHeight;
                 });
