@@ -49,8 +49,9 @@ server.on('connection', function(user){
 	user.connectionId = crypto.createHash('md5').update("id" + user.remoteAddress  + '-' + user.remotePort).digest("hex").slice(0,8).toUpperCase();
 	user.write('{"action":"connect","id":"'+user.connectionId+'"}\n')
 
-	_log("----------User " + user.connectionId + " connected-----------");
-	io.emit('console',"----------User " + user.connectionId + " connected-----------");
+	_log("User " + user.connectionId + " connected");
+	io.emit('console',"User " + user.connectionId + " connected");
+	insertLog("User " + user.connectionId + " connected");
 
 	user.on('data', function (dataRaw){
 		var pos = dataRaw.toString().indexOf("}");
