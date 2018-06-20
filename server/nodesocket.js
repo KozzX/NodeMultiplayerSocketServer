@@ -22,16 +22,17 @@ var pool      =    mysql.createPool({
 });
 
 process.argv.forEach(function (val, index, array) {
-  console.log(index + ': ' + val);
-  if (index == 2) {
-  	verb = val;
-  };
+	console.log(index + ': ' + val);
+	if (index == 2) {
+		verb = val;
+	};
 });
 
 
 app.use(express.static('public'));
 app.get('/', function(req, res){
-  res.sendFile(__dirname + '/index.html');
+	console.log("entrou page");
+	res.sendFile(__dirname + '/index.html');
 });
 
 var cfg = {
@@ -74,6 +75,8 @@ server.on('connection', function(user){
 				delete users["lobby"][lobbyUsers[0]];
 				delete users["lobby"][lobbyUsers[1]];
 
+				cleanLobby();
+
 				users[user.room][lobbyUsers[0]].life = 50;
 				users[user.room][lobbyUsers[1]].life = 50;
 				users[user.room][lobbyUsers[0]].room = user.room;
@@ -112,20 +115,21 @@ server.on('connection', function(user){
 })
 
 var _destroySocket = function (user) {
-  if (!user.room || !users[user.room] || !users[user.room][user.connectionId]) return
-  users[user.room][user.connectionId].isConnected = false
-  users[user.room][user.connectionId].destroy()
-  delete users[user.room][user.connectionId]
-  console.log('Usuário ' + user.connectionId + ' disconectou da sala ' + user.room)
-  io.emit('console', 'Usuário ' + user.connectionId + ' disconectou da sala ' + user.room)
-  insertLog('Usuário ' + user.connectionId + ' disconectou da sala ' + user.room);
+	if (!user.room || !users[user.room] || !users[user.room][user.connectionId]) return
+	users[user.room][user.connectionId].isConnected = false
+	users[user.room][user.connectionId].destroy()
+	delete users[user.room][user.connectionId]
+	console.log('Usuário ' + user.connectionId + ' disconectou da sala ' + user.room)
+	io.emit('console', 'Usuário ' + user.connectionId + ' disconectou da sala ' + user.room)
+	insertLog('Usuário ' + user.connectionId + ' disconectou da sala ' + user.room);
   
-  if (Object.keys(users[user.room]).length === 0) {
-    delete users[user.room]
-    console.log('Sala vazia ' + user.room + ' foi removida')
-    io.emit('console','Sala vazia ' + user.room + ' foi removida')
-    insertLog('Sala vazia ' + user.room + ' foi removida');
-  }
+	if (Object.keys(users[user.room]).length === 0) {
+		delete users[user.room]
+		console.log('Sala vazia ' + user.room + ' foi removida')
+		io.emit('console','Sala vazia ' + user.room + ' foi removida')
+		insertLog('Sala vazia ' + user.room + ' foi removida');
+  	}
+  	
 }
 
 server.on('listening', function() {
@@ -145,6 +149,16 @@ server.on('listening', function() {
 })
 server.listen(1902, '::')
 
+function cleanLobby(){
+	if ("lobby" in users){
+		if (Object.keys(users['lobby']).length === 0) {
+			delete users['lobby']
+			console.log('Sala vazia lobby foi removida')
+			io.emit('console','Sala vazia lobby foi removida')
+			insertLog('Sala vazia lobby foi removida');
+		}
+	}
+}
 
 function monitRooms() {
 	console.log("------------------------------------------------------------------");
